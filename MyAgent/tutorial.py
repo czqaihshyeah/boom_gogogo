@@ -1,9 +1,10 @@
 '''An example to show how to set up an pommerman game programmatically'''
 import pommerman
 from pommerman import agents
-from MyAgent.NetAgent import *
+from MyAgent.OldAgent import *
 import tensorflow as tf
 import joblib
+from conv_agent import *
 
 def main():
     '''Simple function to bootstrap a game.
@@ -15,19 +16,19 @@ def main():
 
     ##############
     sess = tf.InteractiveSession()
-    params = joblib.load('model_3_policy')
+    params = joblib.load('parametersepoch8')
 
 
     # Create a set of agents (exactly four)
     agent_list = [
         agents.SimpleAgent(),
+        # agents.DockerAgent("pommerman/brain-agent", port=12345),
         agents.SimpleAgent(),
         agents.SimpleAgent(),
-        # agents.SimpleAgent(),
+        agents.DockerAgent("pommerman/simple-agent", port=10080),
+        # convNetwork(sess,params)
         # agents.PlayerAgent(),
-        # NetAgent(sess, params),
         #TODO 建立一个镜像
-        agents.DockerAgent("pommerman/netagent1", port=12305),
     ]
     # Make the "Free-For-All" environment using the agent list
     env = pommerman.make('PommeTeamCompetition-v0', agent_list)
@@ -37,11 +38,8 @@ def main():
         state = env.reset()
         done = False
         while not done:
-            # print(state[1])
-            # env.render()
             actions = env.act(state)
             state, reward, done, info = env.step(actions)
-        # print(state)
         print(done)
         print('Episode {} finished'.format(i_episode))
         print(reward)
