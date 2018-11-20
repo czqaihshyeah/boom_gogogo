@@ -98,12 +98,7 @@ class ForwardModel(object):
         def act_ex_communication(agent):
             '''Handles agent's move without communication'''
             if agent.is_alive:
-                print('here')
-                print(obs[agent.agent_id]['board'].shape)
-                action = agent.act(obs[agent.agent_id], action_space=action_space)
-                print(action)
-                return action
-                # return agent.act(obs[agent.agent_id], action_space=action_space)
+                return agent.act(obs[agent.agent_id], action_space=action_space)
             else:
                 return constants.Action.Stop.value
 
@@ -124,7 +119,6 @@ class ForwardModel(object):
             if is_communicative:
                 ret.append(act_with_communication(agent))
             else:
-                print('agent_id: ',agent.agent_id)
                 ret.append(act_ex_communication(agent))
 
         return ret
