@@ -37,11 +37,12 @@ def available_action(state):
 def featurize(obs):
     # TODO: history of n moves?
     board = obs['board']
+    board = np.array(board)
 
     # convert board items into bitmaps
     maps = [board == i for i in range(10)]
-    maps.append(obs['bomb_blast_strength'])
-    maps.append(obs['bomb_life'])
+    maps.append(np.array(obs['bomb_blast_strength']))
+    maps.append(np.array(obs['bomb_life']))
 
     # duplicate ammo, blast_strength and can_kick over entire map
     #创建一个由常数填充的数组,第一个参数是数组的形状，第二个参数是数组中填充的常数。
@@ -51,30 +52,30 @@ def featurize(obs):
 
     # add my position as bitmap
     position = np.zeros(board.shape)
-    position[obs['position']] = 1
+    position[tuple(obs['position'])] = 1
     maps.append(position)
 
     # add teammate
     if obs['teammate'] is not None:
-        maps.append(board == obs['teammate'].value)
+        maps.append(board == obs['teammate'])
     else:
         maps.append(np.zeros(board.shape))
 
     # add enemies
-    enemies = [board == e.value for e in obs['enemies']]
+    enemies = [board == e for e in obs['enemies']]
     maps.append(np.any(enemies, axis=0))
 
     #assert len(maps) == NUM_CHANNELS
     return np.stack(maps, axis=2)
 
 class convNetwork(BaseAgent):
-    def __init__(self, sess, name):
+    def __init__(self, sess,params):
         super(convNetwork, self).__init__()
         self.act_dim = 6
-        self.name = name
         self.sess = sess
+        self.name = 'nets'
 
-        with tf.variable_scope(name):
+        with tf.variable_scope(self.name):
             activation = tf.nn.relu
             self.available_moves = tf.placeholder(tf.float32, [None, self.act_dim], name='availableActions')
             self.X_ob = tf.placeholder(tf.float32, [None, 11,11,18], name="input")
@@ -109,27 +110,25 @@ class convNetwork(BaseAgent):
 
 
         self.availPi = tf.add(self.pi, self.available_moves)
-        #FIXME logits=self.availPi
-        self.dist = tf.distributions.Categorical(logits=self.availPi)
+        #TODO argmax instead of sample
+        self.dist = tf.distributions.Categorical(logits=self.pi)
         self.action = self.dist.sample()
         self.neglog_probs = -self.dist.log_prob(self.action)
         self.params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.name)
-        # self.loadParams(param)
+        self.loadParams(params)
 
-    def step_value(self, state):
-        value= self.sess.run(self.vf, {self.X_ob: state})
-        return value
 
-    def step_policy(self, obs, availacs):
-        action, neglop, value = self.sess.run([self.action, self.neglog_probs, self.vf], {self.X_ob: obs, self.available_moves: availacs})
-        return action, neglop,value
+    def step_policy(self, obs):
+        action = self.sess.run(self.action, {self.X_ob: obs})
+        return action
 
-    # def act(self, obs, action_space):
-    #     #featurize obs
-    #     obs_input = featurize(obs).reshape(-1,11,11,18)
-    #     availacs = np.array(available_action(obs),dtype=int).reshape(1,6)
-    #     action = self.step_policy(obs_input, availacs)
-    #     return action
+    def act(self, obs, action_space):
+        #featurize obs
+        obs_input = featurize(obs).reshape(-1,11,11,18)
+        # availacs = np.array(available_action(obs),dtype=int).reshape(1,6)
+        action = self.step_policy(obs_input)
+        action = np.int(action)
+        return action
 
 
     def loadParams(self,paramsToLoad):

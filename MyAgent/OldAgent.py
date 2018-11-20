@@ -20,23 +20,23 @@ def ortho_init(scale=1.0):
     return _ortho_init
 
 def featurize(obs):
-    board = obs['board'].reshape(-1).astype(np.float32)
-    bomb_blast_strength = obs['bomb_blast_strength'].reshape(-1).astype(np.float32)
-    bomb_life = obs['bomb_life'].reshape(-1).astype(np.float32)
+    board = np.array(obs['board'],dtype=np.float32).reshape(-1)
+    bomb_blast_strength = np.array(obs['bomb_blast_strength'],dtype=np.float32).reshape(-1)
+    bomb_life = np.array(obs['bomb_life'], dtype=np.float32).reshape(-1)
     position = np.array(obs['position']).astype(np.float32)
     ammo = np.array([obs['ammo']]).astype(np.float32)
     blast_strength = np.array([obs['blast_strength']]).astype(np.float32)
     can_kick = np.array([obs['can_kick']]).astype(np.float32)
 
     teammate = obs['teammate']
-    if teammate is not None:
-        teammate = teammate.value
-    else:
-        teammate = -1
+    # if teammate is not None:
+    #     teammate = teammate.value
+    # else:
+    #     teammate = -1
     teammate = np.array([teammate]).astype(np.float32)
 
     enemies = obs['enemies']
-    enemies = [e.value for e in enemies]
+    enemies = [e for e in enemies]
     if len(enemies) < 3:
         enemies = enemies + [-1] * (3 - len(enemies))
     enemies = np.array(enemies).astype(np.float32)
@@ -100,8 +100,8 @@ class NetAgent(BaseAgent):
                     w3 = tf.get_variable('w3', [64, act_dim], initializer=ortho_init(np.sqrt(2)))
                     b3 = tf.get_variable('b3', [act_dim], initializer=tf.constant_initializer(0))
                     self.pi = tf.matmul(z2, w3) + b3
-        self.availPi = tf.add(self.pi, self.available_moves)
-        self.dist = tf.distributions.Categorical(logits=self.availPi)
+        # self.availPi = tf.add(self.pi, self.available_moves)
+        self.dist = tf.distributions.Categorical(logits=self.pi)
         self.action = self.dist.sample()
         self.sess = sess
         self.params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='net')
@@ -110,13 +110,14 @@ class NetAgent(BaseAgent):
     def act(self, obs, action_space):
         #featurize obs
         obs_input = featurize(obs).reshape(-1, 372)
-        availacs = np.array(available_action(obs),dtype=int).reshape(1,6)
-        action = self.step_policy(obs_input, availacs)
+        # availacs = np.array(available_action(obs),dtype=int).reshape(1,6)
+        action = self.step_policy(obs_input)
+        action = np.int(action)
         return action
 
 
-    def step_policy(self, obs, availacs):
-        action = self.sess.run(self.action, {self.X_ob: obs, self.available_moves: availacs})
+    def step_policy(self, obs):
+        action = self.sess.run(self.action, {self.X_ob: obs})
         return action
 
     def loadParams(self,paramsToLoad):
