@@ -30,7 +30,7 @@ class MyAgent(DockerAgentRunner):
 def main():
     '''Inits and runs a Docker Agent'''
     sess = tf.InteractiveSession()
-    path = 'parametersepoch8'
+    path = 'parametersepoch28'
     params = joblib.load(path)
     agent = MyAgent(sess, params)
     agent.run()
